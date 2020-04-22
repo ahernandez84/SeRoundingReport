@@ -1,24 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
+using NLog;
 using SeRoundingReport.Models;
 
 namespace SeRoundingReport.Services
 {
     class SqlService
     {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
         private string connectionString;
         public SqlService(string connectionString)
         {
             this.connectionString = connectionString;
         }
 
-        public DataTable GetSupervisorRounds(Supervisor sup)
+        public DataTable GetSupervisorRounds(Supervisor sup, string customEndDate = "")
         {
             try
             {
@@ -54,8 +52,14 @@ namespace SeRoundingReport.Services
 
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@weekstart", DateTime.Now.AddDays(-7).ToShortDateString());
-                        command.Parameters.AddWithValue("@weekend", new DateTime(DateTime.Now.Year,DateTime.Now.Month,DateTime.Now.Day,11,59,59));
+                        DateTime nowDT;
+                        if (string.IsNullOrEmpty(customEndDate))
+                            nowDT = DateTime.Now.AddDays(-1);
+                        else
+                            nowDT = DateTime.Parse(customEndDate);
+
+                        command.Parameters.AddWithValue("@weekstart", nowDT.AddDays(-6).ToShortDateString());
+                        command.Parameters.AddWithValue("@weekend", new DateTime(nowDT.Year, nowDT.Month, nowDT.Day,11,59,59));
                         command.Parameters.AddWithValue("@cardnumber", sup.CardNumber);
                         command.Parameters.AddWithValue("@start", sup.StartOfShift);
                         command.Parameters.AddWithValue("@end", sup.EndOfShift);
@@ -69,7 +73,7 @@ namespace SeRoundingReport.Services
 
                 return results;
             }
-            catch (Exception) { return null; }
+            catch (Exception ex) { logger.Error(ex, "SqlService <GetSupervisorRounds> method."); return null; }
         }
 
         public DataTable GetOfficerRounds(int start, int end, string jobTitle, string customEndDate = "")
@@ -118,11 +122,11 @@ namespace SeRoundingReport.Services
                     {
                         DateTime nowDT;
                         if (string.IsNullOrEmpty(customEndDate))
-                            nowDT = DateTime.Now;
+                            nowDT = DateTime.Now.AddDays(-1);
                         else
                             nowDT = DateTime.Parse(customEndDate);
 
-                        command.Parameters.AddWithValue("@weekstart", nowDT.AddDays(-7).ToShortDateString());
+                        command.Parameters.AddWithValue("@weekstart", nowDT.AddDays(-6).ToShortDateString());
                         command.Parameters.AddWithValue("@weekend", new DateTime(nowDT.Year, nowDT.Month, nowDT.Day, 11, 59, 59));
                         command.Parameters.AddWithValue("@jobtitle", jobTitle + "%");
                         command.Parameters.AddWithValue("@start", start);
@@ -137,7 +141,7 @@ namespace SeRoundingReport.Services
 
                 return results;
             }
-            catch (Exception) { return null; }
+            catch (Exception ex) { logger.Error(ex, "SqlService <GetOfficerRounds> method."); return null; }
         }
 
     }

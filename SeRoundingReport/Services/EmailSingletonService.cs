@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
+using System.Net;
 using System.Net.Mail;
 
 using NLog;
-using System.Net;
 
-namespace SeHugsAlarmReporter.Services
+namespace SeRoundingReport.Services
 {
     public sealed class EmailSingletonService
     {
@@ -48,7 +48,7 @@ namespace SeHugsAlarmReporter.Services
 
                 SetEmailToAndFromAddresses();
 
-                var defaultTemplate = $"The attached Hugs report was generated for @date.  Please review it and feel free to contact Schneider Electric if you have any concerns.";
+                var defaultTemplate = $"The attached report was generated on @date.  Please review it and feel free to contact Schneider Electric if you have any concerns.";
 
                 var template = ReadInHTMLTemplate();
 
@@ -64,17 +64,17 @@ namespace SeHugsAlarmReporter.Services
                     MailMessage message = new MailMessage();
 
                     Attachment attachment = null;
-                    if (File.Exists($@"{Environment.CurrentDirectory}\hugs.png"))
+                    if (File.Exists($@"{Environment.CurrentDirectory}\logo.png"))
                     {
-                        attachment = new Attachment($@"{Environment.CurrentDirectory}\hugs.png");
-                        logger.Info("The hugs image was found.");
+                        attachment = new Attachment($@"{Environment.CurrentDirectory}\logo.png");
+                        logger.Info("The logo image was found.");
                     }
 
                     Attachment attachmentFile = null;
                     if (File.Exists(fileNamePath))
                     {
                         attachmentFile = new Attachment(fileNamePath);
-                        logger.Info("The hugs report was found.");
+                        logger.Info("The report was found.");
                     }
 
                     /* update html email template */
@@ -108,13 +108,13 @@ namespace SeHugsAlarmReporter.Services
         {
             try
             {
-                fromAddress = ConfigurationManager.AppSettings[3];
-                smtpServer = ConfigurationManager.AppSettings[4];
-                smtpPort = Convert.ToInt32(ConfigurationManager.AppSettings[5]);
-                smtpUseSSL = Convert.ToBoolean(ConfigurationManager.AppSettings[6]);
-                smtpUserName = ConfigurationManager.AppSettings[7];
-                smtpPassword = ConfigurationManager.AppSettings[8];
-                subject = ConfigurationManager.AppSettings[9];
+                fromAddress = ConfigurationManager.AppSettings[8];
+                smtpServer = ConfigurationManager.AppSettings[9];
+                smtpPort = Convert.ToInt32(ConfigurationManager.AppSettings[10]);
+                smtpUseSSL = Convert.ToBoolean(ConfigurationManager.AppSettings[11]);
+                smtpUserName = ConfigurationManager.AppSettings[12];
+                smtpPassword = ConfigurationManager.AppSettings[13];
+                subject = ConfigurationManager.AppSettings[14];
 
                 var recipientListPath = $@"{Environment.CurrentDirectory}\toaddresses.txt";
 
@@ -148,7 +148,7 @@ namespace SeHugsAlarmReporter.Services
         {
             try
             {
-                template = template.Replace("@date", DateTime.Now.AddMonths(-1).ToString("MMMM yyyy"));
+                template = template.Replace("@date", DateTime.Now.ToString("MMMM dd, yyyy"));
                 if (!string.IsNullOrEmpty(contentId))
                     template = template.Replace("@contentId", contentId);
 
