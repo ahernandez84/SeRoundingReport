@@ -30,9 +30,9 @@ namespace SeRoundingReport.Services
                 var second = ConfigurationManager.AppSettings["SecondShift"].Split(',');
                 var third = ConfigurationManager.AppSettings["ThirdShift"].Split(',');
 
-                supShifts.Add("First", new Supervisor { StartOfShift=first[0], EndOfShift=first[1], CardNumber=first[2] });
-                supShifts.Add("Second", new Supervisor { StartOfShift = second[0], EndOfShift = second[1], CardNumber = second[2] });
-                supShifts.Add("Third", new Supervisor { StartOfShift = third[0], EndOfShift = third[1], CardNumber = third[2] });
+                supShifts.Add("First", new Supervisor { StartOfShift=Convert.ToInt32(first[0]), EndOfShift= Convert.ToInt32(first[1]), CardNumber=first[2] });
+                supShifts.Add("Second", new Supervisor { StartOfShift = Convert.ToInt32(second[0]), EndOfShift = Convert.ToInt32(second[1]), CardNumber = second[2] });
+                supShifts.Add("Third", new Supervisor { StartOfShift = Convert.ToInt32(third[0]), EndOfShift = Convert.ToInt32(third[1]), CardNumber = third[2] });
 
                 return supShifts;
             }
@@ -64,6 +64,15 @@ namespace SeRoundingReport.Services
                 return ConfigurationManager.AppSettings["ReportPath"];
             }
             catch (Exception) { return string.Empty; }
+        }
+
+        public static bool GetSendEmail()
+        {
+            try
+            {
+                return Convert.ToBoolean(ConfigurationManager.AppSettings["SendEmail"]);
+            }
+            catch (Exception) { return false; }
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 
@@ -16,6 +17,81 @@ namespace SeRoundingReport.Services
             this.connectionString = connectionString;
         }
 
+        #region Get Door Counts
+        public Dictionary<string, int> GetSupervisorDoorCounts()
+        {
+            try
+            {
+                var results = new Dictionary<string, int>();
+
+                string query = @"select dc.textcol1 as 'Post', count(d.uiname) as 'TotalDoors'
+                                from door d
+                                join doorcustom dc on (dc.objectidhi = d.objectidhi and dc.objectidlo = d.objectidlo)
+                                where dc.textcol1 is not null
+                                and (dc.textcol1 like '%supervisor%')
+                                group by dc.textcol1
+                                order by dc.textcol1";
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                results.Add(reader.GetString(0), reader.GetInt32(1));
+                            }
+                        }
+                    }
+                }
+
+                return results;
+            }
+            catch (Exception ex) { logger.Error(ex, "SqlService <GetSupervisorDoorCounts> method."); return null; }
+        }
+
+        public Dictionary<string, int> GetOfficerDoorCounts()
+        {
+            try
+            {
+                var results = new Dictionary<string, int>();
+
+                string query = @"select substring(d.uiname,1,abs(charindex('.',d.uiname)-1)) as 'ClinicalBldg',count(d.uiname) as 'TotalCount'
+                                from door d
+                                join doorcustom dc on (dc.objectidhi = d.objectidhi and dc.objectidlo = d.objectidlo)
+                                where dc.textcol1 is not null
+                                and (dc.textcol1 like '%officer%')
+                                group by substring(d.uiname,1,abs(charindex('.', d.uiname)-1))
+                                order by ClinicalBldg";
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                results.Add(reader.GetString(0), reader.GetInt32(1));
+                            }
+                        }
+                    }
+                }
+
+                return results;
+            }
+            catch (Exception ex) { logger.Error(ex, "SqlService <GetOfficerDoorCount> method."); return null; }
+        }
+        #endregion
+
+        #region Get Rounding Data
         public DataTable GetSupervisorRounds(Supervisor sup, string customEndDate = "")
         {
             try
@@ -23,10 +99,16 @@ namespace SeRoundingReport.Services
                 var results = new DataTable("SupervisorRounds");
 
                 string query = @";with sup as (
-	                                select [timestamp],dooridhi,dooridlo,personidlo,nonabacardnumber
+	                                select distinct 
+                                        --[timestamp]
+                                        datepart(d, [timestamp]) as 'TimeStamp'
+                                        ,datepart(hh, [timestamp]) as 'TimeStampHour'
+                                        ,dooridhi,dooridlo,personidlo,nonabacardnumber
 	                                from accessevent ae
 	                                where 
-		                                [timestamp] >= @weekstart and [timestamp] <= @weekend and EventClass in (0,4,46)
+		                                [timestamp] >= @weekstart and [timestamp] <= @weekend 
+		                                and (datepart(hour, [timestamp]) between @start and @end or datepart(hour, [timestamp]) between @start2 and @end2)
+                                        and EventClass in (0,4,46)
                                 ), groupedEvents as (
 	                                select 
 		                                dc.textcol1 as 'Post'
@@ -35,7 +117,6 @@ namespace SeRoundingReport.Services
 	                                right join doorcustom dc on (
 		                                dc.objectidhi = sup.DoorIdHi and dc.objectidlo = sup.DoorIdLo 
 		                                and sup.NonAbaCardNumber = @cardnumber
-		                                and datepart(hour, sup.[timestamp]) between @start and @end
 	                                )
 	                                join door d on (dc.ObjectIdHi = d.objectidhi and dc.objectidlo = d.objectidlo)
 	                                where
@@ -58,11 +139,29 @@ namespace SeRoundingReport.Services
                         else
                             nowDT = DateTime.Parse(customEndDate);
 
+                        int start, end, start2, end2;
+                        if (sup.StartOfShift < sup.EndOfShift)
+                        {
+                            start = sup.StartOfShift;
+                            end = sup.EndOfShift;
+                            start2 = 0;
+                            end2 = 0;
+                        }
+                        else
+                        {
+                            start = sup.StartOfShift;
+                            end = 24;
+                            start2 = 0;
+                            end2 = sup.EndOfShift;
+                        }
+
                         command.Parameters.AddWithValue("@weekstart", nowDT.AddDays(-6).ToShortDateString());
-                        command.Parameters.AddWithValue("@weekend", new DateTime(nowDT.Year, nowDT.Month, nowDT.Day,11,59,59));
+                        command.Parameters.AddWithValue("@weekend", new DateTime(nowDT.Year, nowDT.Month, nowDT.Day,23,59,59));
                         command.Parameters.AddWithValue("@cardnumber", sup.CardNumber);
-                        command.Parameters.AddWithValue("@start", sup.StartOfShift);
-                        command.Parameters.AddWithValue("@end", sup.EndOfShift);
+                        command.Parameters.AddWithValue("@start", start);
+                        command.Parameters.AddWithValue("@end", end);
+                        command.Parameters.AddWithValue("@start2", start2);
+                        command.Parameters.AddWithValue("@end2", end2);
 
                         using (var adapter = new SqlDataAdapter(command))
                         {
@@ -83,10 +182,16 @@ namespace SeRoundingReport.Services
                 var results = new DataTable("OfficerRounds");
 
                 string query = @";with pso as (
-	                                select [timestamp],dooridhi,dooridlo,personidlo,cardnumber
+	                                select distinct 
+                                        --[timestamp]
+                                        datepart(d, [timestamp]) as 'TimeStamp'
+                                        ,datepart(hh, [timestamp]) as 'TimeStampHour'
+                                        ,dooridhi,dooridlo,personidlo,cardnumber
 	                                from accessevent ae
 	                                where 
-		                                [timestamp] >= @weekstart and [timestamp] <= @weekend and EventClass in (0,4,46)
+		                                [timestamp] >= @weekstart and [timestamp] <= @weekend 
+                                        and (datepart(hour, [timestamp]) between @start and @end or datepart(hour, [timestamp]) between @start2 and @end2)
+                                        and EventClass in (0,4,46)
                                 ), groupedEvents as (
 	                                select 
 		                                d.uiname as 'DoorName'
@@ -103,7 +208,7 @@ namespace SeRoundingReport.Services
 	                                ) p on (p.CardNumber = pso.CardNumber)
 	                                right join doorcustom dc on (
 		                                dc.objectidhi = pso.DoorIdHi and dc.objectidlo = pso.DoorIdLo 
-		                                and datepart(hour, pso.[timestamp]) between @start and @end
+		                                --and datepart(hour, pso.[timestamp]) between @start and @end
 	                                )
 	                                join door d on (dc.ObjectIdHi = d.objectidhi and dc.objectidlo = d.objectidlo)
 	                                where
@@ -126,11 +231,29 @@ namespace SeRoundingReport.Services
                         else
                             nowDT = DateTime.Parse(customEndDate);
 
+                        int start1, end1, start2, end2;
+                        if (start < end)
+                        {
+                            start1 = start;
+                            end1 = end;
+                            start2 = 0;
+                            end2 = 0;
+                        }
+                        else
+                        {
+                            start1 = start;
+                            end1 = 24;
+                            start2 = 0;
+                            end2 = end;
+                        }
+
                         command.Parameters.AddWithValue("@weekstart", nowDT.AddDays(-6).ToShortDateString());
-                        command.Parameters.AddWithValue("@weekend", new DateTime(nowDT.Year, nowDT.Month, nowDT.Day, 11, 59, 59));
+                        command.Parameters.AddWithValue("@weekend", new DateTime(nowDT.Year, nowDT.Month, nowDT.Day, 23, 59, 59));
                         command.Parameters.AddWithValue("@jobtitle", jobTitle + "%");
-                        command.Parameters.AddWithValue("@start", start);
-                        command.Parameters.AddWithValue("@end", end);
+                        command.Parameters.AddWithValue("@start", start1);
+                        command.Parameters.AddWithValue("@end", end1);
+                        command.Parameters.AddWithValue("@start2", start2);
+                        command.Parameters.AddWithValue("@end2", end2);
 
                         using (var adapter = new SqlDataAdapter(command))
                         {
@@ -143,6 +266,7 @@ namespace SeRoundingReport.Services
             }
             catch (Exception ex) { logger.Error(ex, "SqlService <GetOfficerRounds> method."); return null; }
         }
+        #endregion
 
     }
 }

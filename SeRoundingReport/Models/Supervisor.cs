@@ -9,7 +9,7 @@ namespace SeRoundingReport.Models
     class Supervisor
     {
         public string CardNumber { get; set; }
-        public string StartOfShift { get; set; }
-        public string EndOfShift { get; set; }
+        public int StartOfShift { get; set; }
+        public int EndOfShift { get; set; }
     }
 }

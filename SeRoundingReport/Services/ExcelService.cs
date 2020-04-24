@@ -186,7 +186,7 @@ namespace SeRoundingReport.Services
                     else if (dc.ColumnName == "Compliance")
                     {
                         ws.Cells[rowIndex, colIndex].Style.Numberformat.Format = "#0\\.00%";
-                        ws.Cells[rowIndex, colIndex].Formula = $"=(E{rowIndex})/(D{rowIndex})";
+                        ws.Cells[rowIndex, colIndex].Formula = $"=(E{rowIndex})/(D{rowIndex}) * 100";
                     }
                     else if (dc.ColumnName == "Target")
                     {
@@ -211,7 +211,7 @@ namespace SeRoundingReport.Services
                 if (i == 6)
                 {
                     ws.Cells[rowIndex, i].Style.Numberformat.Format = "#0\\.00%";
-                    ws.Cells[rowIndex, i].Formula = $"=(E{rowIndex})/(D{rowIndex})";
+                    ws.Cells[rowIndex, i].Formula = $"=(E{rowIndex})/(D{rowIndex}) * 100";
                 }
                 if (i == 7)
                 {
@@ -262,7 +262,7 @@ namespace SeRoundingReport.Services
                 if (i == 6)
                 {
                     ws.Cells[rIndex, i].Style.Numberformat.Format = "#0\\.00%";
-                    ws.Cells[rIndex, i].Formula = $"=(E{rIndex})/(D{rIndex})";
+                    ws.Cells[rIndex, i].Formula = $"=(E{rIndex})/(D{rIndex}) * 100";
                 }
                 if (i == 7)
                 {
@@ -301,7 +301,7 @@ namespace SeRoundingReport.Services
                 if (i == 6)
                 {
                     ws.Cells[rIndex, i].Style.Numberformat.Format = "#0\\.00%";
-                    ws.Cells[rIndex, i].Formula = $"=(E{rIndex})/(D{rIndex})";
+                    ws.Cells[rIndex, i].Formula = $"=(E{rIndex})/(D{rIndex}) * 100";
                 }
                 if (i == 7)
                 {

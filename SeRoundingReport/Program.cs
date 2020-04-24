@@ -37,6 +37,10 @@ namespace SeRoundingReport
             Console.WriteLine("Running SQL queries to gather rounding data.");
             logger.Info("Running SQL queries to gather rounding data.");
 
+            // Get Door Counts for Officers and Supervisors
+            var supDoors = sql.GetSupervisorDoorCounts();
+            var offDoors = sql.GetOfficerDoorCounts();
+
             // Get Supervisor Rounds
             List<DataTable> supResultsToReport = new List<DataTable>();
             foreach (var s in supervisors)
@@ -44,7 +48,7 @@ namespace SeRoundingReport
                 var r = sql.GetSupervisorRounds(s.Value, customEndDate);
                 if (r != null)
                 {
-                    supResultsToReport.Add(EditSupervisorTableForExcel(r));
+                    supResultsToReport.Add(EditSupervisorTableForExcel(r, supDoors));
                 }
             }
 
@@ -60,7 +64,7 @@ namespace SeRoundingReport
             List<DataTable> offResultsToReport = new List<DataTable>();
             foreach (var t in offResults)
             {
-                var r = EditOfficerTableForExcel(t);
+                var r = EditOfficerTableForExcel(t, offDoors);
                 if (r != null)
                     offResultsToReport.Add(r);
             }
@@ -74,16 +78,19 @@ namespace SeRoundingReport
             Console.WriteLine("Emailing report to recipients.");
             logger.Info("Emailing report to recipients.");
 
-            EmailSingletonService.Instance.Initialize();
-            var b = EmailSingletonService.Instance.SendEmail($@"{reportPath}\UCM Rounding Report {DateTime.Now.ToString("yyyyMMdd")}.xlsx");
+            if (AppConfigService.GetSendEmail())
+            {
+                EmailSingletonService.Instance.Initialize();
+                var b = EmailSingletonService.Instance.SendEmail($@"{reportPath}\UCM Rounding Report {DateTime.Now.ToString("yyyyMMdd")}.xlsx");
 
-            if (b)
-            {
-                logger.Info("Email sent to recipients.");
-            }
-            else
-            {
-                logger.Warn("Failed to email report.");
+                if (b)
+                {
+                    logger.Info("Email sent to recipients.");
+                }
+                else
+                {
+                    logger.Warn("Failed to email report.");
+                }
             }
 
             Console.WriteLine("Done processing this program will terminate.");
@@ -91,7 +98,7 @@ namespace SeRoundingReport
         }
 
         #region Private Methods
-        private static DataTable EditSupervisorTableForExcel(DataTable dt)
+        private static DataTable EditSupervisorTableForExcel(DataTable dt, Dictionary<string, int> doors)
         {
             try
             {
@@ -106,16 +113,19 @@ namespace SeRoundingReport
 
                 foreach (DataRow dr in dt.Rows)
                 {
+                    //var drCount = doors[dr[0].ToString()]; // Jason wants tap counts to be 1 for supervisors instead of actual door count / post
+                    var drCount = 1;
                     var post = dr[0].ToString().Substring(dr[0].ToString().IndexOf("-") + 1);
+                    var completed = (Convert.ToInt32(dr[1]) > drCount * 2 * 7 ? drCount * 2 * 7 : dr[1]);
 
-                    t.Rows.Add(post, 1, 2, 0, dr[1], 0, 90);
+                    t.Rows.Add(post, drCount, 2, 0, completed, 0, 90);
                 }
                 return t;
             }
             catch (Exception) { return null; }
         }
 
-        private static DataTable EditOfficerTableForExcel(DataTable dt)
+        private static DataTable EditOfficerTableForExcel(DataTable dt, Dictionary<string, int> doors)
         {
             try
             {
@@ -130,7 +140,10 @@ namespace SeRoundingReport
 
                 foreach (DataRow dr in dt.Rows)
                 {
-                    t.Rows.Add((dr[0].ToString().Equals("F", StringComparison.OrdinalIgnoreCase) ? "Comer 2 (F)" : dr[0]), 40, 4, 0, dr[1], 0, 90);
+                    var drCount = doors[dr[0].ToString()];
+                    var completed = (Convert.ToInt32(dr[1]) > drCount * 4 * 7 ? drCount * 4 * 7 : dr[1]);
+
+                    t.Rows.Add((dr[0].ToString().Equals("F", StringComparison.OrdinalIgnoreCase) ? "Comer 2 (F)" : dr[0]), drCount, 4, 0, completed, 0, 90);
                 }
                 return t;
             }
