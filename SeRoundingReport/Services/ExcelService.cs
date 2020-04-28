@@ -112,6 +112,8 @@ namespace SeRoundingReport.Services
                             rIndex++;
 
                         ws2.Cells[rIndex, 1].Value = index == 0 ? "1st Shift" : (index == 1 ? "2nd Shift" : "3rd Shift");
+                        ws2.Cells[rIndex, 1].Style.Font.Bold = true;
+                        ws2.Cells[rIndex, 1].Style.Font.Size = 16;
                         rIndex += 2;
                         CreateHeader(ws2, ref rIndex, s, Color.LightGray);
                         CreateRawData(ws2, ref rIndex, s);
@@ -134,6 +136,8 @@ namespace SeRoundingReport.Services
                             rIndex++;
 
                         ws3.Cells[rIndex, 1].Value = index == 0 ? "1st Shift" : (index == 1 ? "2nd Shift" : "3rd Shift");
+                        ws3.Cells[rIndex, 1].Style.Font.Bold = true;
+                        ws3.Cells[rIndex, 1].Style.Font.Size = 16;
                         rIndex += 2;
                         CreateHeader(ws3, ref rIndex, o, Color.LightGray);
                         CreateRawData(ws3, ref rIndex, o);
