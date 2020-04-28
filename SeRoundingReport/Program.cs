@@ -69,11 +69,37 @@ namespace SeRoundingReport
                     offResultsToReport.Add(r);
             }
 
+            // Get Raw Data
+            List<DataTable> supRawData = new List<DataTable>();
+            foreach (var s in supervisors)
+            {
+                var r = sql.GetSupervisorRounds(s.Value, customEndDate, true);
+                if (r != null)
+                {
+                    supRawData.Add(r);
+                }
+            }
+
+            List<DataTable> offRawData = new List<DataTable>();
+            var r4 = sql.GetOfficerRounds(7, 14, jobTitle, customEndDate, true);
+            var r5 = sql.GetOfficerRounds(15, 22, jobTitle, customEndDate, true);
+            var r6 = sql.GetOfficerRounds(23, 6, jobTitle, customEndDate, true);
+            if (r4 != null) offRawData.Add(r4);
+            if (r5 != null) offRawData.Add(r5);
+            if (r6 != null) offRawData.Add(r6);
+
+            // Generate Report
             Console.WriteLine("Generating Excel report.");
             logger.Info("Generating Excel report.");
 
-            var reportDT = string.IsNullOrEmpty(customEndDate) ? DateTime.Now : DateTime.Parse(customEndDate);
-            ExcelService.GenerateReport($@"{reportPath}\UCM Rounding Report", "Public Safety - Weekly Round Report",reportDT, offResultsToReport.ToArray(), supResultsToReport.ToArray());
+            var reportDT = string.IsNullOrEmpty(customEndDate) ? DateTime.Now.AddDays(-1) : DateTime.Parse(customEndDate);
+            ExcelService.GenerateReport(
+                $@"{reportPath}\UCM Rounding Report"
+                , "Public Safety - Weekly Round Report"
+                , reportDT
+                , offResultsToReport.ToArray(), supResultsToReport.ToArray()
+                , offRawData.ToArray(), supRawData.ToArray()
+            );
 
             Console.WriteLine("Emailing report to recipients.");
             logger.Info("Emailing report to recipients.");
@@ -93,7 +119,7 @@ namespace SeRoundingReport
                 }
             }
 
-            Console.WriteLine("Done processing this program will terminate.");
+            Console.WriteLine("Done processing, this program will terminate.");
             Environment.Exit(0);
         }
 

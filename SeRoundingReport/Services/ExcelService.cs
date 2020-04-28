@@ -15,7 +15,7 @@ namespace SeRoundingReport.Services
     class ExcelService
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        public static bool GenerateReport(string fileNamePath, string reportName,DateTime reportDate, DataTable[] off, DataTable[] sup)
+        public static bool GenerateReport(string fileNamePath, string reportName,DateTime reportDate, DataTable[] off, DataTable[] sup, DataTable[] offRawData, DataTable[] supRawData)
         {
             try
             {
@@ -28,7 +28,7 @@ namespace SeRoundingReport.Services
                     p.Workbook.Properties.Author = "2020 Schneider Electric Homewood";
                     p.Workbook.Properties.Title = reportName;
 
-                    ExcelWorksheet ws = CreateSheetWithDefaults(p, reportName);
+                    ExcelWorksheet ws = CreateSheetWithDefaults(p, "Rounding Compliance");
 
                     // Merging cells and create a center heading for out table
                     ws.Cells[1, 1].Value = $"{reportName}";
@@ -97,17 +97,55 @@ namespace SeRoundingReport.Services
                     // Auto fit cells
                     for (int i = 1; i <= off[0].Columns.Count; i++)
                     {
-                            ws.Column(i).AutoFit();
+                        ws.Column(i).AutoFit();
                     }
 
-                    ////var chart = (ExcelBarChart)ws.Drawings.AddChart("crtHugsAlarms", OfficeOpenXml.Drawing.Chart.eChartType.ColumnClustered);
-                    ////chart.SetPosition(rowIndex + 2, 0, 2, 0);
-                    ////chart.SetSize(400, 400);
-                    ////chart.Series.Add("B8:B13", "A8:A13");
-                    ////chart.Title.Text = "Hugs Alarms";
-                    ////chart.Style = eChartStyle.Style31;
-                    ////chart.Legend.Remove();
+                    // Save raw data
+                    index = 0;
+                    rIndex = 0;
+                    ExcelWorksheet ws2 = CreateSheetWithDefaults(p, "Supervisor Raw Data");
+                    foreach (var s in supRawData)
+                    {
+                        if (rIndex > 0)
+                            rIndex += 2;
+                        else
+                            rIndex++;
 
+                        ws2.Cells[rIndex, 1].Value = index == 0 ? "1st Shift" : (index == 1 ? "2nd Shift" : "3rd Shift");
+                        rIndex += 2;
+                        CreateHeader(ws2, ref rIndex, s, Color.LightGray);
+                        CreateRawData(ws2, ref rIndex, s);
+                        index++;
+                    }
+
+                    for (int i = 1; i <= supRawData[0].Columns.Count; i++)
+                    {
+                        ws2.Column(i).AutoFit();
+                    }
+
+                    index = 0;
+                    rIndex = 0;
+                    ExcelWorksheet ws3 = CreateSheetWithDefaults(p, "Officer Raw Data");
+                    foreach (var o in offRawData)
+                    {
+                        if (rIndex > 0)
+                            rIndex += 2;
+                        else
+                            rIndex++;
+
+                        ws3.Cells[rIndex, 1].Value = index == 0 ? "1st Shift" : (index == 1 ? "2nd Shift" : "3rd Shift");
+                        rIndex += 2;
+                        CreateHeader(ws3, ref rIndex, o, Color.LightGray);
+                        CreateRawData(ws3, ref rIndex, o);
+                        index++;
+                    }
+
+                    for (int i = 1; i <= offRawData[0].Columns.Count; i++)
+                    {
+                        ws3.Column(i).AutoFit();
+                    }
+
+                    // Save the report
                     string file = fileNamePath + $" {DateTime.Now.ToString("yyyyMMdd")}.xlsx";
 
                     Byte[] bin = p.GetAsByteArray();
@@ -123,8 +161,8 @@ namespace SeRoundingReport.Services
         private static ExcelWorksheet CreateSheetWithDefaults(ExcelPackage p, string sheetName)
         {
             p.Workbook.Worksheets.Add(sheetName);
-            ExcelWorksheet ws = p.Workbook.Worksheets[0];
-            ws.Name = "Rounding Compliance"; //sheetName; 
+            ExcelWorksheet ws = p.Workbook.Worksheets[sheetName];
+            ws.Name = sheetName;
             // Worksheet defaults
             ws.Cells.Style.Font.Size = 11;
             ws.Cells.Style.Font.Name = "Calibri";
@@ -317,6 +355,23 @@ namespace SeRoundingReport.Services
                 {
                     ws.Cells[rIndex, i].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                     ws.Cells[rIndex, i].Style.VerticalAlignment = ExcelVerticalAlignment.Bottom;
+                }
+            }
+        }
+
+        private static void CreateRawData(ExcelWorksheet ws, ref int rowIndex, DataTable dt, bool isOfficer = true)
+        {
+            int colIndex = 0;
+            foreach (DataRow dr in dt.Rows)
+            {
+                colIndex = 1;
+                rowIndex++;
+
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    ws.Cells[rowIndex, colIndex].Value = dr[dc.ColumnName];
+
+                    colIndex++;
                 }
             }
         }
